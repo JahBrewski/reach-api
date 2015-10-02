@@ -1,6 +1,7 @@
 {
     "require": {
         "slim/slim": "^2.6",
-        "pusher/pusher-php-server": "^2.2"
+        "pusher/pusher-php-server": "^2.2",
+        "tuupola/slim-jwt-auth": "^1.0"
     }
 }
