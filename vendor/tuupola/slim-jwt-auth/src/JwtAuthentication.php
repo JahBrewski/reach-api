@@ -27,7 +27,7 @@ class JwtAuthentication extends \Slim\Middleware
     protected $message; /* Last error message. */
 
     private $options = array(
-        "secure" => true,
+        "secure" => false, //XXX
         "relaxed" => array("localhost", "127.0.0.1"),
         "environment" => "HTTP_AUTHORIZATION",
         "cookie" => "token",
