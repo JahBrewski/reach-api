@@ -1,7 +1,10 @@
 {
     "require": {
         "slim/slim": "^2.6",
+        "illuminate/database": "*",
         "pusher/pusher-php-server": "^2.2",
-        "tuupola/slim-jwt-auth": "^1.0"
+        "tuupola/slim-jwt-auth": "^1.0",
+        "monolog/monolog": "^1.17",
+        "flynsarmy/Slim-Monolog": "^1.0"
     }
 }
