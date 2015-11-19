@@ -157,7 +157,14 @@ $app->post('/user', function() use($app) {
 $app->get('/company', function() use($app) {
     $app->response->setStatus(200);
     $companies = \Company::all();
-    echo $companies->toJson();
+    //index by company ID
+	 $indexed_companies = array();
+	 if(sizeof($companies) > 0){
+      foreach($companies as $company){
+        $indexed_companies[$company->id] = $company;
+		}
+	 }
+    echo json_encode($indexed_companies);
 });
 /*
 $app->get('/company/:cid', function($cid) use($app) {
@@ -267,7 +274,7 @@ function doLogin() {
                     $indexed_roles = array();
 						  if(sizeof($roles) > 0){
                       foreach($roles as $role){
-                        $indexed_roles[] = $role;
+                        $indexed_roles[($role->company_id)] = $role;
 							 }
 						  }
 
