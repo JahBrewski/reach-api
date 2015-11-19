@@ -267,7 +267,7 @@ function doLogin() {
                     //$tokenId    = base64_encode(mcrypt_create_iv(32));
                     $issuedAt   = time();
                     $notBefore  = $issuedAt;  //Adding 10 seconds
-                    $expire     = $notBefore + 3600; // Adding 60 seconds
+                    $expire     = $notBefore + 3600000; // Adding 60 seconds
                     $serverName = $config['serverName'];
 
 						  $roles = \Perm::where('user_id', '=', $user->id)->get();
