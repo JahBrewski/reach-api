@@ -15,7 +15,9 @@ class User extends \Illuminate\Database\Eloquent\Model
                           'email',
                           'encrypted_password', 
                           'first_name', 
-                          'last_name'
+                          'last_name',
+                          'company_name', 
+                          'position' 
                         );
 }
 
@@ -152,6 +154,15 @@ $app->get('/user/:uid', function($uid) use($app) {
 
 $app->post('/user', function() use($app) {
     $app->response->setStatus(200);
+	 $posty = $app->request->post();
+	 //XXX check to see if the userID matches the JWT.
+    $user = \User::find($posty['id']);
+	 $user->first_name = $posty['first_name'];
+	 $user->last_name = $posty['last_name'];
+	 $user->email = $posty['email'];
+	 $user->company_name = $posty['company_name'];
+	 $user->position = $posty['position'];
+	 $user->save();
 });
 
 $app->get('/company', function() use($app) {

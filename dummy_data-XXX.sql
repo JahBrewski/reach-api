@@ -136,6 +136,8 @@ CREATE TABLE `users` (
   `encrypted_password` varchar(255) NOT NULL,
   `first_name` varchar(255) NOT NULL,
   `last_name` varchar(255) NOT NULL,
+  `company_name` varchar(255) DEFAULT NULL,
+  `position` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -146,7 +148,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'mrgoby@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Brook','Davis'),(2,'lappin.hammond@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Lappin','Hammond'),(3,'joelbrewer01@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Joel','Brewer');
+INSERT INTO `users` VALUES (1,'mrgoby@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Brook','Davis',NULL,NULL),(2,'lappin.hammond@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Lappin','Hammond',NULL,NULL),(3,'joelbrewer01@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Joel','Brewer','Brewer Digital','Owner');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -159,4 +161,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2015-11-20  5:35:35
+-- Dump completed on 2015-11-20 22:28:38
