@@ -247,6 +247,26 @@ $app->get('/bulletin/:cid', function($cid) use($app) {
 	 echo $bulletins->toJson();
 });
 
+$app->post('/bulletin', function() use($app) {
+    $app->response->setStatus(200);
+	 $posty = $app->request->post();
+	 $bulletin = new \Bulletin();
+	 $bulletin->company_id = $posty['company_id']; 
+	 $bulletin->from_user_id = $posty['sender_uid'];
+	 $bulletin->message_content = $posty['message_content'];
+	 $bulletin->timestamp_queued = date('Y-m-d h:i:s');
+	 $bulletin->timestamp_dequeued = date('Y-m-d h:i:s');
+	 $bulletin->save();
+
+    //XXX XXX XXX
+##    $app_id = '140562';
+##    $app_key = '95129dfbfbc16ec4a811';
+##    $app_secret = '1a5dac7bf5d8f1fd9c33';
+##    $pusher = new Pusher( $app_key, $app_secret, $app_id );
+##    $pusher->trigger( 'my_channel'.$posty['recipient_uid'], 'my_event', $posty['message_content']);
+
+});
+
 
 $app->get('/employee/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
