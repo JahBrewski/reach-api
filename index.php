@@ -156,12 +156,20 @@ $app->post('/user', function() use($app) {
 
 $app->get('/company', function() use($app) {
     $app->response->setStatus(200);
+
+    //figure out what companies they can know about.
+	 $role_admin = $app->jwt->role_admin;
+	 $role_employee = $app->jwt->role_employee;
+	 $role_customer = $app->jwt->role_customer;
+	 $all_roles = array_merge($role_admin, $role_employee, $role_customer);
+
     $companies = \Company::all();
     //index by company ID
-	 $indexed_companies = array();
 	 if(sizeof($companies) > 0){
       foreach($companies as $company){
-        $indexed_companies[$company->id] = $company;
+		  if(in_array($company->id, $all_roles)){
+          $indexed_companies[$company->id] = $company;
+		  }
 		}
 	 }
     echo json_encode($indexed_companies);
@@ -222,6 +230,26 @@ $app->get('/feed/:uid', function($uid) use($app) {
     echo json_encode($feed);
 });
 
+$app->get('/bulletin/:cid', function($cid) use($app) {
+    $app->response->setStatus(200);
+    $bulletins = \Bulletin::orderBy('timestamp_queued','DESC')->where('company_id','=',$cid)->get();
+	 echo $bulletins->toJson();
+});
+
+
+$app->get('/employee/:cid', function($cid) use($app) {
+    $app->response->setStatus(200);
+    $employees = \User::whereRaw("id in (select distinct user_id from perms where (role='admin' OR role='employee') and company_id='".$cid."')")->get();
+	 echo $employees->toJson();
+});
+
+$app->get('/customer/:cid', function($cid) use($app) {
+    $app->response->setStatus(200);
+    $customers = \User::whereRaw("id in (select distinct user_id from perms where role='customer' and company_id='".$cid."')")->get();
+	 echo $customers->toJson();
+});
+
+
 #END CRUD
 //XXX..
 $app->get('/create-db-schema', function () {
@@ -271,11 +299,31 @@ function doLogin() {
                     $serverName = $config['serverName'];
 
 						  $roles = \Perm::where('user_id', '=', $user->id)->get();
-                    $indexed_roles = array();
-						  if(sizeof($roles) > 0){
-                      foreach($roles as $role){
-                        $indexed_roles[($role->company_id)] = $role;
-							 }
+
+						  $admins = array();
+						  $employees = array();
+						  $customers = array();
+
+						  $role_admin = \Perm::where(['user_id' => $user->id, 'role' => 'admin'])->get();
+						  $role_emp = \Perm::where(['user_id' => $user->id, 'role' => 'employee'])->get();
+						  $role_cust = \Perm::where(['user_id' => $user->id, 'role' => 'customer'])->get();
+
+                    if(sizeof($role_admin) > 0){
+                      foreach($role_admin as $role){
+							   $admins[] = $role->company_id;
+						    }
+						  }
+
+                    if(sizeof($role_emp) > 0){
+                      foreach($role_emp as $role){
+							   $employees[] = $role->company_id;
+						    }
+						  }
+
+                    if(sizeof($role_cust) > 0){
+                      foreach($role_cust as $role){
+							   $customers[] = $role->company_id;
+						    }
 						  }
 
                     /*
@@ -289,9 +337,11 @@ function doLogin() {
                         'exp'  => $expire,           // Expire
                         'data' => array(                  // Data related to the signer user
                             'userId'   => $user->id, // userid from the users table
-                            'userName' => $username, // User name
-                            'roles' => $indexed_roles
-                        )
+                            'userName' => $username // User name
+									 ),
+                        'role_admin' => $admins,
+                        'role_employee' => $employees,
+                        'role_customer' => $customers
                     );
                     
                     //header('Content-type: application/json');
