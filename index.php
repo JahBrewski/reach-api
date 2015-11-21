@@ -140,6 +140,15 @@ $app->post('/login', function() use($app) {
     doLogin();
 });
 
+$app->post('/pusher/auth', function() use($app) {
+    $app->response->setStatus(200);
+    $app_id = '140562';
+    $app_key = '95129dfbfbc16ec4a811';
+    $app_secret = '1a5dac7bf5d8f1fd9c33';
+    $pusher = new Pusher( $app_key, $app_secret, $app_id );
+    echo $pusher->socket_auth($_POST['channel_name'], $_POST['socket_id']);
+});
+
 $app->get('/user', function() use($app) {
     $app->response->setStatus(200);
     $users = \User::all();
