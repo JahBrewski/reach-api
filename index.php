@@ -208,8 +208,8 @@ $app->post('/message', function() use($app) {
 	 $message->from_user_id = $posty['sender_uid'];
 	 $message->recipient_user_id = $posty['recipient_uid'];
 	 $message->message_content = $posty['message_content'];
-	 $message->timestamp_queued = date('Y-m-d h:i:s');
-	 $message->timestamp_dequeued = date('Y-m-d h:i:s');
+	 $message->timestamp_queued = time();
+	 $message->timestamp_dequeued = $time();
 	 $message->save();
 
     //XXX XXX XXX
@@ -254,8 +254,8 @@ $app->post('/bulletin', function() use($app) {
 	 $bulletin->company_id = $posty['company_id']; 
 	 $bulletin->from_user_id = $posty['sender_uid'];
 	 $bulletin->message_content = $posty['message_content'];
-	 $bulletin->timestamp_queued = date('Y-m-d h:i:s');
-	 $bulletin->timestamp_dequeued = date('Y-m-d h:i:s');
+	 $bulletin->timestamp_queued = time();
+	 $bulletin->timestamp_dequeued = time();
 	 $bulletin->save();
 
     //XXX XXX XXX
