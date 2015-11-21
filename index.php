@@ -209,7 +209,7 @@ $app->post('/message', function() use($app) {
 	 $message->recipient_user_id = $posty['recipient_uid'];
 	 $message->message_content = $posty['message_content'];
 	 $message->timestamp_queued = time();
-	 $message->timestamp_dequeued = $time();
+	 $message->timestamp_dequeued = time();
 	 $message->save();
 
     //XXX XXX XXX
