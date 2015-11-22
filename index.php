@@ -161,6 +161,23 @@ $app->get('/user/:uid', function($uid) use($app) {
     echo $user->toJson();
 });
 
+$app->get('/perm/:uid/:cid', function($uid,$cid) use($app) {
+    $perm = \Perm::where(['company_id' => $cid, 'user_id' => $uid])->get();
+    $app->response->setStatus(200);
+    echo $perm->toJson();
+});
+
+$app->post('/perm', function() use($app) {
+    $app->response->setStatus(200);
+	 $posty = $app->request->post();
+	 //XXX check to see if the userID matches the JWT.
+    $perm = \Perm::find($posty['id']);
+	 $perm->user_id = $posty['user_id'];
+	 $perm->company_id = $posty['company_id'];
+	 $perm->role = $posty['role'];
+	 $perm->save();
+});
+
 $app->post('/user', function() use($app) {
     $app->response->setStatus(200);
 	 $posty = $app->request->post();
