@@ -199,21 +199,26 @@ $app->get('/company/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
 });
 */
-$app->get('/message/:uid', function($uid) use($app) {
+$app->get('/message/:cid/:uid', function($cid,$uid) use($app) {
     $app->response->setStatus(200);
 	 $req_user = $app->jwt->data->userId;
     $messages = \Message::orderBy('timestamp_queued','ASC')
-	 ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND (from_user_id=? OR recipient_user_id=?)', 
-	   [$uid,$uid,$req_user,$req_user])
+	 ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND (from_user_id=? OR recipient_user_id=?) AND company_id=?', 
+	   [$uid,$uid,$req_user,$req_user,$cid])
 	 ->get();
 	 echo $messages->toJson();
 });
 
 $app->post('/message', function() use($app) {
     $app->response->setStatus(200);
+
+//should check that 
+//A: user is member of this company.
+//B: if is customer, other member is not.
+
 	 $posty = $app->request->post();
 	 $message = new \Message();
-	 $message->company_id = '1'; //XXX bad
+	 $message->company_id = $posty['company_id']; 
 	 $message->from_user_id = $posty['sender_uid'];
 	 $message->recipient_user_id = $posty['recipient_uid'];
 	 $message->message_content = $posty['message_content'];
@@ -230,11 +235,35 @@ $app->post('/message', function() use($app) {
 
 });
 
-$app->get('/feed/:uid', function($uid) use($app) {
+$app->get('/customer/feed', function() use($app) {
     $app->response->setStatus(200);
+	 $uid = $app->jwt->data->userId;
+	 $role_customer = $app->jwt->role_customer;
     $all_messages = \Message::orderBy('timestamp_queued','DESC')
-	 ->whereRaw('from_user_id=? OR recipient_user_id=?', 
+	 ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND company_id IN ("'.implode('","',$role_customer).'")', 
 	   [$uid,$uid])
+    ->get();
+	 $feed = array();
+	 $contacts = array();
+    foreach($all_messages as $message){
+      $contact = ($message->recipient_user_id !== $uid) ? 
+		  $message->recipient_user_id : $message->from_user_id;
+		$contact.=".".$message->company_id;
+		if(isset($contacts[$contact])){
+        continue;
+		}
+      $contacts[$contact] = TRUE;
+		$feed[] = $message;
+    }
+    echo json_encode($feed);
+});
+
+$app->get('/company/feed/:cid', function($cid) use($app) {
+    $app->response->setStatus(200);
+	 $uid = $app->jwt->data->userId;
+    $all_messages = \Message::orderBy('timestamp_queued','DESC')
+	 ->whereRaw('(from_user_id=? OR recipient_user_id=?) and company_id=?', 
+	   [$uid,$uid,$cid])
     ->get();
 	 $feed = array();
 	 $contacts = array();
@@ -249,6 +278,7 @@ $app->get('/feed/:uid', function($uid) use($app) {
     }
     echo json_encode($feed);
 });
+
 
 $app->get('/bulletin/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
