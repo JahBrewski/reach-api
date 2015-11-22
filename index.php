@@ -211,6 +211,20 @@ $app->get('/company', function() use($app) {
 	 }
     echo json_encode($indexed_companies);
 });
+
+$app->post('/company', function() use($app) {
+    $app->response->setStatus(200);
+	 $posty = $app->request->post();
+	 //XXX check to see if the userID matches the JWT.
+    $company = \Company::find($posty['id']);
+	 $company->name = $posty['name'];
+	 $company->description = $posty['description'];
+	 //$user->long_desc = $posty['email'];
+	 $company->save();
+});
+
+
+
 /*
 $app->get('/company/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
