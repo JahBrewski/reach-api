@@ -178,6 +178,54 @@ $app->post('/perm', function() use($app) {
 	 $perm->save();
 });
 
+$app->post('/invite', function() use($app) {
+    $app->response->setStatus(200);
+	 $posty = $app->request->post();
+    //XXX perms checks 
+
+    //is new user ?
+	 $user = \User::where('email','=',$posty['email'])->get();
+	 if(sizeof($user) > 0){
+      //see if that user is already a member of the company
+		$perms = \Perm::where(['user_id' => $user[0]->id, 'company_id' => $posty['company_id']])->get();
+		if(sizeof($perms) > 0){
+		  //already exists, update.
+		  $perm = $perms[0];
+		  $perm->role=$posty['role'];
+		  $perm->save();
+		$message = "Your password is: secretsauce";
+		mail($posty['email'],'Welcome to REACH App',$message);
+		}else{
+        //create a new perm.
+		  $perm = new \Perm;
+		  $perm->user_id=$user[0]->id;
+		  $perm->company_id=$posty['company_id'];
+		  $perm->role=$posty['role'];
+		  $perm->save();
+		}
+	 }else{
+//create a new user.
+      $user = new \User();
+		$user->first_name ='John';
+		$user->last_name='Doe';
+		$user->email = $posty['email'];
+		$user->encrypted_password='ede97144247e25cb1f63c8a6a5f0b57d';
+		$user->save();
+
+		$perm = new \Perm;
+		$perm->user_id=$user->id;
+		$perm->company_id=$posty['company_id'];
+		$perm->role=$posty['role'];
+		$perm->save();
+
+		$message = "Your password is: secretsauce";
+		mail($posty['email'],'Welcome to REACH App',$message);
+
+	 }
+});
+
+
+
 $app->post('/user', function() use($app) {
     $app->response->setStatus(200);
 	 $posty = $app->request->post();
