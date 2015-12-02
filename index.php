@@ -271,13 +271,12 @@ $app->post('/company', function() use($app) {
 	 $company->save();
 });
 
-
-
-/*
 $app->get('/company/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
+	 $company = \Company::find($cid);
+	 echo $company->toJson();
 });
-*/
+
 $app->get('/message/:cid/:uid', function($cid,$uid) use($app) {
     $app->response->setStatus(200);
 	 $req_user = $app->jwt->data->userId;
@@ -322,6 +321,17 @@ $app->get('/customer/feed', function() use($app) {
 	 ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND company_id IN ("'.implode('","',$role_customer).'")', 
 	   [$uid,$uid])
     ->get();
+
+    $all_bulletins = \Bulletin::orderBy('timestamp_queued','DESC')
+	 ->whereRaw('company_id IN ("'.implode('","',$role_customer).'")')
+    ->get();
+
+    $bulletin_feed = array();
+	 if(sizeof($all_bulletins) > 0){
+	   foreach($all_bulletins as $bullet){
+        $bulletin_feed[] = $bullet;
+		}
+    }
 	 $feed = array();
 	 $contacts = array();
     foreach($all_messages as $message){
@@ -334,6 +344,22 @@ $app->get('/customer/feed', function() use($app) {
       $contacts[$contact] = TRUE;
 		$feed[] = $message;
     }
+
+    $feed = array_merge($feed, $bulletin_feed);
+    usort($feed, function($a,$b){
+	   return strcmp($a->timestamp_queued, $b->timestamp_queued);
+	 });
+	
+    if(sizeof($feed) > 0){
+      foreach($feed as $k => $f){
+        if(isset($f->recipient_user_id)){
+          $feed[$k]->type = 'message';
+		  }else{
+          $feed[$k]->type = 'bulletin';
+		  }
+      }
+	 }
+
     echo json_encode($feed);
 });
 
@@ -457,6 +483,8 @@ function doLogin() {
 						  $role_emp = \Perm::where(['user_id' => $user->id, 'role' => 'employee'])->get();
 						  $role_cust = \Perm::where(['user_id' => $user->id, 'role' => 'customer'])->get();
 
+                    $role_super = $user->super_admin;
+
                     if(sizeof($role_admin) > 0){
                       foreach($role_admin as $role){
 							   $admins[] = $role->company_id;
@@ -490,7 +518,8 @@ function doLogin() {
 									 ),
                         'role_admin' => $admins,
                         'role_employee' => $employees,
-                        'role_customer' => $customers
+                        'role_customer' => $customers,
+                        'role_super' => $role_super,
                     );
                     
                     //header('Content-type: application/json');
