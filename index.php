@@ -246,13 +246,16 @@ $app->get('/company', function() use($app) {
 	 $role_admin = $app->jwt->role_admin;
 	 $role_employee = $app->jwt->role_employee;
 	 $role_customer = $app->jwt->role_customer;
+	 $role_super = $app->jwt->role_super;
 	 $all_roles = array_merge($role_admin, $role_employee, $role_customer);
+
+    
 
     $companies = \Company::all();
     //index by company ID
 	 if(sizeof($companies) > 0){
       foreach($companies as $company){
-		  if(in_array($company->id, $all_roles)){
+		  if($role_super == 1 || in_array($company->id, $all_roles)){
           $indexed_companies[$company->id] = $company;
 		  }
 		}
