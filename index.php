@@ -410,7 +410,7 @@ $app->get('/bulletin/:cid', function($cid) use($app) {
 });
 
 $app->post('/bulletin', function() use($app) {
-    $app->response->setStatus(200);
+   $app->response->setStatus(200);
    $posty = $app->request->post();
    $bulletin = new \Bulletin();
    $bulletin->company_id = $posty['company_id']; 
@@ -426,7 +426,12 @@ $app->post('/bulletin', function() use($app) {
 ##    $app_secret = '1a5dac7bf5d8f1fd9c33';
 ##    $pusher = new Pusher( $app_key, $app_secret, $app_id );
 ##    $pusher->trigger( 'my_channel'.$posty['recipient_uid'], 'my_event', $posty['message_content']);
+  
+   // Send push notification to every member of the company
+   $company = \Company::find($bulletin->company_id);
+   $push_content = $company->name . ": " . $bulletin->message_content;
 
+   send_bulletin_push($push_content, $bulletin, $app);
 });
 
 
@@ -656,6 +661,48 @@ function send_message_push($device_token, $message, $company_id, $sender_id) {
           'payload' => [
             'company_id' => $company_id,
             'sender_id'  => $sender_id
+          ]
+        ]
+      ]
+    ]
+  ]);
+}
+
+function send_bulletin_push($push_content, $bulletin, $app) {
+
+  //$employees = \User::whereRaw("id in (select distinct user_id from perms where company_id='".$bulletin->company_id."')")->get();
+  //$company_members = \User::whereRaw("id in (select distinct user_id from perms where company_id='".$bulletin->company_id."' and device_token is not null)")->get()->toArray();
+  $company_members = \User::whereRaw("id in (select distinct user_id from perms where company_id='".$bulletin->company_id."')")->get()->toArray();
+
+  $app->log->debug("members:");
+  $app->log->debug($company_members);
+
+  // now we have an array of company members. we need to send all members with a
+  // device token the push. easy peasy
+
+  $client = new GuzzleHttp\Client();
+  $res = $client->request('POST', 'https://push.ionic.io/api/v1/push', [
+    'auth' => ['50e2a82e2d36dc853a0a10affdb02c858d6d9890571576d1', ''],
+    'headers' => [
+      'Content-Type' => 'application/json',
+      'X-Ionic-Application-Id' => '385fc9cd'
+    ],
+    'json' => [
+      'tokens' => [ $device_token ],
+      'notification' => [
+        'alert' => $message,
+        'ios' => [
+          'payload' => [
+            'is_bulletin' => 'true',
+            'company_id' => $bulletin->company_id,
+            'sender_id'  => $bulletin->from_user_id
+          ]
+        ],
+        'android' => [
+          'payload' => [
+            'is_bulletin' => 'true',
+            'company_id' => $bulletin->company_id,
+            'sender_id'  => $bulletin->from_user_id
           ]
         ]
       ]
