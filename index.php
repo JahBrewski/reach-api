@@ -17,7 +17,8 @@ class User extends \Illuminate\Database\Eloquent\Model
                           'first_name', 
                           'last_name',
                           'company_name', 
-                          'position' 
+                          'position',
+                          'device_token'
                         );
 }
 
@@ -50,10 +51,10 @@ class Message extends \Illuminate\Database\Eloquent\Model
                           'company_id',
                           'from_user_id',
                           'recipient_user_id', 
-								  'message_content', 
-								  'timestamp_queued',
-								  'timestamp_dequeued'
-								  );
+                  'message_content', 
+                  'timestamp_queued',
+                  'timestamp_dequeued'
+                  );
 }
 
 class Bulletin extends \Illuminate\Database\Eloquent\Model
@@ -64,9 +65,9 @@ class Bulletin extends \Illuminate\Database\Eloquent\Model
                           'company_id',
                           'from_user_id',
                           'message_content', 
-								  'timestamp_queued',
-								  'timestamp_dequeued'
-								  );
+                  'timestamp_queued',
+                  'timestamp_dequeued'
+                  );
 }
 
 //setup logging
@@ -107,19 +108,18 @@ $app->add(new \Slim\Middleware\JwtAuthentication([
     "secret" => "supersecretkeyyoushouldnotcommittogithub",
     "callback" => function ($options) use ($app) {
             $app->jwt = $options["decoded"];
-	               },
+                 },
 #'logger' => $monolog,
     "rules" => [
       new \Slim\Middleware\JwtAuthentication\RequestPathRule([
         "path" => "/",
         "passthrough" => array("/login")
-    	 ]),
+       ]),
       new \Slim\Middleware\JwtAuthentication\RequestMethodRule([
         "passthrough" => ["OPTIONS"]
         ])
-    	 ]
+       ]
 ]));
-
 
 #################################################
 #################### Routes #####################
@@ -169,74 +169,82 @@ $app->get('/perm/:uid/:cid', function($uid,$cid) use($app) {
 
 $app->post('/perm', function() use($app) {
     $app->response->setStatus(200);
-	 $posty = $app->request->post();
-	 //XXX check to see if the userID matches the JWT.
+   $posty = $app->request->post();
+   //XXX check to see if the userID matches the JWT.
     $perm = \Perm::find($posty['id']);
-	 $perm->user_id = $posty['user_id'];
-	 $perm->company_id = $posty['company_id'];
-	 $perm->role = $posty['role'];
-	 $perm->save();
+   $perm->user_id = $posty['user_id'];
+   $perm->company_id = $posty['company_id'];
+   $perm->role = $posty['role'];
+   $perm->save();
+});
+
+$app->post('/device-token', function() use($app) {
+  $app->response->setStatus(200);
+  $posty = $app->request->post();
+  $user = \User::find($posty['user_id']);
+  $user->device_token = $posty['device_token'];
+  $user->save();
 });
 
 $app->post('/invite', function() use($app) {
     $app->response->setStatus(200);
-	 $posty = $app->request->post();
+   $posty = $app->request->post();
     //XXX perms checks 
 
     //is new user ?
-	 $user = \User::where('email','=',$posty['email'])->get();
-	 if(sizeof($user) > 0){
+   $user = \User::where('email','=',$posty['email'])->get();
+   if(sizeof($user) > 0){
       //see if that user is already a member of the company
-		$perms = \Perm::where(['user_id' => $user[0]->id, 'company_id' => $posty['company_id']])->get();
-		if(sizeof($perms) > 0){
-		  //already exists, update.
-		  $perm = $perms[0];
-		  $perm->role=$posty['role'];
-		  $perm->save();
-		$message = "Your password is: secretsauce";
-		mail($posty['email'],'Welcome to REACH App',$message);
-		}else{
+    $perms = \Perm::where(['user_id' => $user[0]->id, 'company_id' => $posty['company_id']])->get();
+    if(sizeof($perms) > 0){
+      //already exists, update.
+      $perm = $perms[0];
+      $perm->role=$posty['role'];
+      $perm->save();
+    $message = "Your password is: secretsauce";
+    mail($posty['email'],'Welcome to REACH App',$message);
+    }else{
         //create a new perm.
-		  $perm = new \Perm;
-		  $perm->user_id=$user[0]->id;
-		  $perm->company_id=$posty['company_id'];
-		  $perm->role=$posty['role'];
-		  $perm->save();
-		}
-	 }else{
+      $perm = new \Perm;
+      $perm->user_id=$user[0]->id;
+      $perm->company_id=$posty['company_id'];
+      $perm->role=$posty['role'];
+      $perm->save();
+    }
+   }else{
 //create a new user.
       $user = new \User();
-		$user->first_name ='John';
-		$user->last_name='Doe';
-		$user->email = $posty['email'];
-		$user->encrypted_password='ede97144247e25cb1f63c8a6a5f0b57d';
-		$user->save();
+    $user->first_name ='John';
+    $user->last_name='Doe';
+    $user->email = $posty['email'];
+    $user->encrypted_password='ede97144247e25cb1f63c8a6a5f0b57d';
+    $user->save();
 
-		$perm = new \Perm;
-		$perm->user_id=$user->id;
-		$perm->company_id=$posty['company_id'];
-		$perm->role=$posty['role'];
-		$perm->save();
+    $perm = new \Perm;
+    $perm->user_id=$user->id;
+    $perm->company_id=$posty['company_id'];
+    $perm->role=$posty['role'];
+    $perm->save();
 
-		$message = "Your password is: secretsauce";
-		mail($posty['email'],'Welcome to REACH App',$message);
+    $message = "Your password is: secretsauce";
+    mail($posty['email'],'Welcome to REACH App',$message);
 
-	 }
+   }
 });
 
 
 
 $app->post('/user', function() use($app) {
     $app->response->setStatus(200);
-	 $posty = $app->request->post();
-	 //XXX check to see if the userID matches the JWT.
+   $posty = $app->request->post();
+   //XXX check to see if the userID matches the JWT.
     $user = \User::find($posty['id']);
-	 $user->first_name = $posty['first_name'];
-	 $user->last_name = $posty['last_name'];
-	 $user->email = $posty['email'];
-	 $user->company_name = $posty['company_name'];
-	 $user->position = $posty['position'];
-	 $user->save();
+   $user->first_name = $posty['first_name'];
+   $user->last_name = $posty['last_name'];
+   $user->email = $posty['email'];
+   $user->company_name = $posty['company_name'];
+   $user->position = $posty['position'];
+   $user->save();
 });
 
 $app->get('/company', function() use($app) {
@@ -249,29 +257,27 @@ $app->get('/company', function() use($app) {
 	 $role_super = $app->jwt->role_super;
 	 $all_roles = array_merge($role_admin, $role_employee, $role_customer);
 
-    
-
     $companies = \Company::all();
     //index by company ID
-	 if(sizeof($companies) > 0){
+   if(sizeof($companies) > 0){
       foreach($companies as $company){
 		  if($role_super == 1 || in_array($company->id, $all_roles)){
           $indexed_companies[$company->id] = $company;
-		  }
-		}
-	 }
+      }
+    }
+   }
     echo json_encode($indexed_companies);
 });
 
 $app->post('/company', function() use($app) {
     $app->response->setStatus(200);
-	 $posty = $app->request->post();
-	 //XXX check to see if the userID matches the JWT.
+   $posty = $app->request->post();
+   //XXX check to see if the userID matches the JWT.
     $company = \Company::find($posty['id']);
-	 $company->name = $posty['name'];
-	 $company->description = $posty['description'];
-	 //$user->long_desc = $posty['email'];
-	 $company->save();
+   $company->name = $posty['name'];
+   $company->description = $posty['description'];
+   //$user->long_desc = $posty['email'];
+   $company->save();
 });
 
 $app->get('/company/:cid', function($cid) use($app) {
@@ -282,12 +288,12 @@ $app->get('/company/:cid', function($cid) use($app) {
 
 $app->get('/message/:cid/:uid', function($cid,$uid) use($app) {
     $app->response->setStatus(200);
-	 $req_user = $app->jwt->data->userId;
+   $req_user = $app->jwt->data->userId;
     $messages = \Message::orderBy('timestamp_queued','ASC')
-	 ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND (from_user_id=? OR recipient_user_id=?) AND company_id=?', 
-	   [$uid,$uid,$req_user,$req_user,$cid])
-	 ->get();
-	 echo $messages->toJson();
+   ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND (from_user_id=? OR recipient_user_id=?) AND company_id=?', 
+     [$uid,$uid,$req_user,$req_user,$cid])
+   ->get();
+   echo $messages->toJson();
 });
 
 $app->post('/message', function() use($app) {
@@ -297,15 +303,15 @@ $app->post('/message', function() use($app) {
 //A: user is member of this company.
 //B: if is customer, other member is not.
 
-	 $posty = $app->request->post();
-	 $message = new \Message();
-	 $message->company_id = $posty['company_id']; 
-	 $message->from_user_id = $posty['sender_uid'];
-	 $message->recipient_user_id = $posty['recipient_uid'];
-	 $message->message_content = $posty['message_content'];
-	 $message->timestamp_queued = time();
-	 $message->timestamp_dequeued = time();
-	 $message->save();
+   $posty = $app->request->post();
+   $message = new \Message();
+   $message->company_id = $posty['company_id']; 
+   $message->from_user_id = $posty['sender_uid'];
+   $message->recipient_user_id = $posty['recipient_uid'];
+   $message->message_content = $posty['message_content'];
+   $message->timestamp_queued = time();
+   $message->timestamp_dequeued = time();
+   $message->save();
 
     //XXX XXX XXX
     $app_id = '140562';
@@ -314,15 +320,24 @@ $app->post('/message', function() use($app) {
     $pusher = new Pusher( $app_key, $app_secret, $app_id );
     $pusher->trigger( 'my_channel'.$posty['recipient_uid'], 'my_event', $posty['message_content']);
 
+    $sender = \User::find($posty['sender_uid']);
+    $recipient = \User::find($posty['recipient_uid']);
+    $device_token = $recipient->device_token;
+    $push_content = $sender->first_name . ": " . $message->message_content;
+    $company_id = $message->company_id;
+    $sender_id  = $message->from_user_id;
+
+    // Send a push notification to the recipient
+    send_message_push($device_token,$push_content,$company_id,$sender_id);
 });
 
 $app->get('/customer/feed', function() use($app) {
     $app->response->setStatus(200);
-	 $uid = $app->jwt->data->userId;
-	 $role_customer = $app->jwt->role_customer;
+   $uid = $app->jwt->data->userId;
+   $role_customer = $app->jwt->role_customer;
     $all_messages = \Message::orderBy('timestamp_queued','DESC')
-	 ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND company_id IN ("'.implode('","',$role_customer).'")', 
-	   [$uid,$uid])
+   ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND company_id IN ("'.implode('","',$role_customer).'")', 
+     [$uid,$uid])
     ->get();
 
     $all_bulletins = \Bulletin::orderBy('timestamp_queued','DESC')
@@ -339,13 +354,13 @@ $app->get('/customer/feed', function() use($app) {
 	 $contacts = array();
     foreach($all_messages as $message){
       $contact = ($message->recipient_user_id !== $uid) ? 
-		  $message->recipient_user_id : $message->from_user_id;
-		$contact.=".".$message->company_id;
-		if(isset($contacts[$contact])){
+      $message->recipient_user_id : $message->from_user_id;
+    $contact.=".".$message->company_id;
+    if(isset($contacts[$contact])){
         continue;
-		}
+    }
       $contacts[$contact] = TRUE;
-		$feed[] = $message;
+    $feed[] = $message;
     }
 
     $feed = array_merge($feed, $bulletin_feed);
@@ -368,21 +383,21 @@ $app->get('/customer/feed', function() use($app) {
 
 $app->get('/company/feed/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
-	 $uid = $app->jwt->data->userId;
+   $uid = $app->jwt->data->userId;
     $all_messages = \Message::orderBy('timestamp_queued','DESC')
-	 ->whereRaw('(from_user_id=? OR recipient_user_id=?) and company_id=?', 
-	   [$uid,$uid,$cid])
+   ->whereRaw('(from_user_id=? OR recipient_user_id=?) and company_id=?', 
+     [$uid,$uid,$cid])
     ->get();
-	 $feed = array();
-	 $contacts = array();
+   $feed = array();
+   $contacts = array();
     foreach($all_messages as $message){
       $contact = ($message->recipient_user_id !== $uid) ? 
-		  $message->recipient_user_id : $message->from_user_id;
-		if(isset($contacts[$contact])){
+      $message->recipient_user_id : $message->from_user_id;
+    if(isset($contacts[$contact])){
         continue;
-		}
+    }
       $contacts[$contact] = TRUE;
-		$feed[] = $message;
+    $feed[] = $message;
     }
     echo json_encode($feed);
 });
@@ -391,19 +406,19 @@ $app->get('/company/feed/:cid', function($cid) use($app) {
 $app->get('/bulletin/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
     $bulletins = \Bulletin::orderBy('timestamp_queued','DESC')->where('company_id','=',$cid)->get();
-	 echo $bulletins->toJson();
+   echo $bulletins->toJson();
 });
 
 $app->post('/bulletin', function() use($app) {
     $app->response->setStatus(200);
-	 $posty = $app->request->post();
-	 $bulletin = new \Bulletin();
-	 $bulletin->company_id = $posty['company_id']; 
-	 $bulletin->from_user_id = $posty['sender_uid'];
-	 $bulletin->message_content = $posty['message_content'];
-	 $bulletin->timestamp_queued = time();
-	 $bulletin->timestamp_dequeued = time();
-	 $bulletin->save();
+   $posty = $app->request->post();
+   $bulletin = new \Bulletin();
+   $bulletin->company_id = $posty['company_id']; 
+   $bulletin->from_user_id = $posty['sender_uid'];
+   $bulletin->message_content = $posty['message_content'];
+   $bulletin->timestamp_queued = time();
+   $bulletin->timestamp_dequeued = time();
+   $bulletin->save();
 
     //XXX XXX XXX
 ##    $app_id = '140562';
@@ -418,13 +433,13 @@ $app->post('/bulletin', function() use($app) {
 $app->get('/employee/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
     $employees = \User::whereRaw("id in (select distinct user_id from perms where (role='admin' OR role='employee') and company_id='".$cid."')")->get();
-	 echo $employees->toJson();
+   echo $employees->toJson();
 });
 
 $app->get('/customer/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
     $customers = \User::whereRaw("id in (select distinct user_id from perms where role='customer' and company_id='".$cid."')")->get();
-	 echo $customers->toJson();
+   echo $customers->toJson();
 });
 
 
@@ -457,7 +472,7 @@ function doLogin() {
         try {
    
             $user = \User::where('email', '=', $username)->take(1)->get();
-				$user = $user[0];
+        $user = $user[0];
             if(true){
     
                 /*
@@ -467,7 +482,7 @@ function doLogin() {
                  * @see http://php.net/manual/en/ref.password.php
                  */
                 if (md5($password) === $user->encrypted_password) {
-					     //setup the data for the jwt
+               //setup the data for the jwt
                     $random = mt_rand(0, 999999); 
                     $tokenId = base64_encode($random);
                     //$tokenId    = base64_encode(mcrypt_create_iv(32));
@@ -476,35 +491,35 @@ function doLogin() {
                     $expire     = $notBefore + 3600000; // Adding 60 seconds
                     $serverName = $config['serverName'];
 
-						  $roles = \Perm::where('user_id', '=', $user->id)->get();
+              $roles = \Perm::where('user_id', '=', $user->id)->get();
 
-						  $admins = array();
-						  $employees = array();
-						  $customers = array();
+              $admins = array();
+              $employees = array();
+              $customers = array();
 
-						  $role_admin = \Perm::where(['user_id' => $user->id, 'role' => 'admin'])->get();
-						  $role_emp = \Perm::where(['user_id' => $user->id, 'role' => 'employee'])->get();
-						  $role_cust = \Perm::where(['user_id' => $user->id, 'role' => 'customer'])->get();
+              $role_admin = \Perm::where(['user_id' => $user->id, 'role' => 'admin'])->get();
+              $role_emp = \Perm::where(['user_id' => $user->id, 'role' => 'employee'])->get();
+              $role_cust = \Perm::where(['user_id' => $user->id, 'role' => 'customer'])->get();
 
                     $role_super = $user->super_admin;
 
                     if(sizeof($role_admin) > 0){
                       foreach($role_admin as $role){
-							   $admins[] = $role->company_id;
-						    }
-						  }
+                 $admins[] = $role->company_id;
+                }
+              }
 
                     if(sizeof($role_emp) > 0){
                       foreach($role_emp as $role){
-							   $employees[] = $role->company_id;
-						    }
-						  }
+                 $employees[] = $role->company_id;
+                }
+              }
 
                     if(sizeof($role_cust) > 0){
                       foreach($role_cust as $role){
-							   $customers[] = $role->company_id;
-						    }
-						  }
+                 $customers[] = $role->company_id;
+                }
+              }
 
                     /*
                      * Create the token as an array
@@ -518,7 +533,7 @@ function doLogin() {
                         'data' => array(                  // Data related to the signer user
                             'userId'   => $user->id, // userid from the users table
                             'userName' => $username // User name
-									 ),
+                   ),
                         'role_admin' => $admins,
                         'role_employee' => $employees,
                         'role_customer' => $customers,
@@ -583,6 +598,7 @@ function create_reach_schema() {
       $table->string('encrypted_password');
       $table->string('first_name');
       $table->string('last_name');
+      $table->string('device_token');
   });
 
   Capsule::schema()->dropIfExists('companies');
@@ -611,6 +627,40 @@ function create_reach_schema() {
       $table->string('timestamp_dequeued'); //enumerate
   });
 
+}
+
+function send_message_push($device_token, $message, $company_id, $sender_id) {
+
+  if (empty($device_token)) {
+    return;
+  }
+
+  $client = new GuzzleHttp\Client();
+  $res = $client->request('POST', 'https://push.ionic.io/api/v1/push', [
+    'auth' => ['50e2a82e2d36dc853a0a10affdb02c858d6d9890571576d1', ''],
+    'headers' => [
+      'Content-Type' => 'application/json',
+      'X-Ionic-Application-Id' => '385fc9cd'
+    ],
+    'json' => [
+      'tokens' => [ $device_token ],
+      'notification' => [
+        'alert' => $message,
+        'ios' => [
+          'payload' => [
+            'company_id' => $company_id,
+            'sender_id'  => $sender_id
+          ]
+        ],
+        'android' => [
+          'payload' => [
+            'company_id' => $company_id,
+            'sender_id'  => $sender_id
+          ]
+        ]
+      ]
+    ]
+  ]);
 }
 
 ### 

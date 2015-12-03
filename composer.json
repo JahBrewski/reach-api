@@ -5,6 +5,7 @@
         "pusher/pusher-php-server": "^2.2",
         "tuupola/slim-jwt-auth": "^1.0",
         "monolog/monolog": "^1.17",
-        "flynsarmy/Slim-Monolog": "^1.0"
+        "flynsarmy/Slim-Monolog": "^1.0",
+        "guzzlehttp/guzzle": "^6.1"
     }
 }
