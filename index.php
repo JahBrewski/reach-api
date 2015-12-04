@@ -410,7 +410,7 @@ $app->get('/bulletin/:cid', function($cid) use($app) {
 });
 
 $app->post('/bulletin', function() use($app) {
-    $app->response->setStatus(200);
+   $app->response->setStatus(200);
    $posty = $app->request->post();
    $bulletin = new \Bulletin();
    $bulletin->company_id = $posty['company_id']; 
@@ -426,7 +426,12 @@ $app->post('/bulletin', function() use($app) {
 ##    $app_secret = '1a5dac7bf5d8f1fd9c33';
 ##    $pusher = new Pusher( $app_key, $app_secret, $app_id );
 ##    $pusher->trigger( 'my_channel'.$posty['recipient_uid'], 'my_event', $posty['message_content']);
+  
+   // Send push notification to every member of the company
+   $company = \Company::find($bulletin->company_id);
+   $push_content = $company->name . ": " . $bulletin->message_content;
 
+   send_bulletin_push($push_content, $bulletin, $app);
 });
 
 
@@ -648,14 +653,63 @@ function send_message_push($device_token, $message, $company_id, $sender_id) {
         'alert' => $message,
         'ios' => [
           'payload' => [
+            'push_type' => 'message',
             'company_id' => $company_id,
             'sender_id'  => $sender_id
           ]
         ],
         'android' => [
           'payload' => [
+            'push_type' => 'message',
             'company_id' => $company_id,
             'sender_id'  => $sender_id
+          ]
+        ]
+      ]
+    ]
+  ]);
+}
+
+function send_bulletin_push($push_content, $bulletin, $app) {
+
+  $company_members = \User::whereRaw("id in (select distinct user_id from perms where company_id='".$bulletin->company_id."')")->get()->toArray();
+
+  $app->log->debug("members:");
+  $app->log->debug($company_members);
+
+  $device_tokens = array();
+
+  foreach($company_members as $member) {
+    if (!empty($member['device_token'])) {
+      $device_tokens[] = $member['device_token'];
+    }
+  }
+
+  $app->log->debug($device_tokens);
+
+  $client = new GuzzleHttp\Client();
+  $res = $client->request('POST', 'https://push.ionic.io/api/v1/push', [
+    'auth' => ['50e2a82e2d36dc853a0a10affdb02c858d6d9890571576d1', ''],
+    'headers' => [
+      'Content-Type' => 'application/json',
+      'X-Ionic-Application-Id' => '385fc9cd'
+    ],
+    'json' => [
+      'tokens' => $device_tokens,
+      'notification' => [
+        'alert' => $push_content,
+        'ios' => [
+          'payload' => [
+            'push_type' => 'bulletin',
+            'company_id' => $bulletin->company_id,
+            'sender_id'  => $bulletin->from_user_id
+          ]
+        ],
+        'android' => [
+          'payload' => [
+            'push_type' => 'bulletin',
+            'company_id' => $bulletin->company_id,
+            'sender_id'  => $bulletin->from_user_id
           ]
         ]
       ]
