@@ -653,12 +653,14 @@ function send_message_push($device_token, $message, $company_id, $sender_id) {
         'alert' => $message,
         'ios' => [
           'payload' => [
+            'push_type' => 'message',
             'company_id' => $company_id,
             'sender_id'  => $sender_id
           ]
         ],
         'android' => [
           'payload' => [
+            'push_type' => 'message',
             'company_id' => $company_id,
             'sender_id'  => $sender_id
           ]
@@ -670,15 +672,20 @@ function send_message_push($device_token, $message, $company_id, $sender_id) {
 
 function send_bulletin_push($push_content, $bulletin, $app) {
 
-  //$employees = \User::whereRaw("id in (select distinct user_id from perms where company_id='".$bulletin->company_id."')")->get();
-  //$company_members = \User::whereRaw("id in (select distinct user_id from perms where company_id='".$bulletin->company_id."' and device_token is not null)")->get()->toArray();
   $company_members = \User::whereRaw("id in (select distinct user_id from perms where company_id='".$bulletin->company_id."')")->get()->toArray();
 
   $app->log->debug("members:");
   $app->log->debug($company_members);
 
-  // now we have an array of company members. we need to send all members with a
-  // device token the push. easy peasy
+  $device_tokens = array();
+
+  foreach($company_members as $member) {
+    if (!empty($member['device_token'])) {
+      $device_tokens[] = $member['device_token'];
+    }
+  }
+
+  $app->log->debug($device_tokens);
 
   $client = new GuzzleHttp\Client();
   $res = $client->request('POST', 'https://push.ionic.io/api/v1/push', [
@@ -688,19 +695,19 @@ function send_bulletin_push($push_content, $bulletin, $app) {
       'X-Ionic-Application-Id' => '385fc9cd'
     ],
     'json' => [
-      'tokens' => [ $device_token ],
+      'tokens' => $device_tokens,
       'notification' => [
-        'alert' => $message,
+        'alert' => $push_content,
         'ios' => [
           'payload' => [
-            'is_bulletin' => 'true',
+            'push_type' => 'bulletin',
             'company_id' => $bulletin->company_id,
             'sender_id'  => $bulletin->from_user_id
           ]
         ],
         'android' => [
           'payload' => [
-            'is_bulletin' => 'true',
+            'push_type' => 'bulletin',
             'company_id' => $bulletin->company_id,
             'sender_id'  => $bulletin->from_user_id
           ]
