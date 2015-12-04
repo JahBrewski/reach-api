@@ -1,6 +1,7 @@
 <?php
  
 require 'vendor/autoload.php';
+require_once 'mailer.php';
 
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Capsule\Manager as Capsule;
@@ -201,8 +202,13 @@ $app->post('/invite', function() use($app) {
       $perm = $perms[0];
       $perm->role=$posty['role'];
       $perm->save();
-    $message = "Your password is: secretsauce";
-    mail($posty['email'],'Welcome to REACH App',$message);
+
+      try {
+        $mailer = new \Mailer;
+        $mailer->send_welcome_email($posty['email'],null,'secretsauce');
+      } catch (Mandrill_Error $e) {
+	$app->log->error('A mandrill error occurred: ' . get_class($e) . ' - ' . $e->getMessage());
+      }
     }else{
         //create a new perm.
       $perm = new \Perm;
@@ -226,8 +232,12 @@ $app->post('/invite', function() use($app) {
     $perm->role=$posty['role'];
     $perm->save();
 
-    $message = "Your password is: secretsauce";
-    mail($posty['email'],'Welcome to REACH App',$message);
+    try {
+      $mailer = new \Mailer;
+      $mailer->send_welcome_email($posty['email'],null,'secretsauce');
+    } catch (Mandrill_Error $e) {
+      $app->log->error('A mandrill error occurred: ' . get_class($e) . ' - ' . $e->getMessage());
+    }
 
    }
 });
