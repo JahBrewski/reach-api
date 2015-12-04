@@ -170,13 +170,13 @@ $app->get('/perm/:uid/:cid', function($uid,$cid) use($app) {
 
 $app->post('/perm', function() use($app) {
     $app->response->setStatus(200);
-   $posty = $app->request->post();
-   //XXX check to see if the userID matches the JWT.
+    $posty = $app->request->post();
+    //XXX check to see if the userID matches the JWT.
     $perm = \Perm::find($posty['id']);
-   $perm->user_id = $posty['user_id'];
-   $perm->company_id = $posty['company_id'];
-   $perm->role = $posty['role'];
-   $perm->save();
+    $perm->user_id = $posty['user_id'];
+    $perm->company_id = $posty['company_id'];
+    $perm->role = $posty['role'];
+    $perm->save();
 });
 
 $app->post('/device-token', function() use($app) {
@@ -294,6 +294,16 @@ $app->get('/company/:cid', function($cid) use($app) {
     $app->response->setStatus(200);
 	 $company = \Company::find($cid);
 	 echo $company->toJson();
+});
+
+$app->post('/company/add', function() use($app) {
+    $app->response->setStatus(200);
+	 //xxx check if super-admin here.
+    $posty = $app->request->post();
+	 $company = new \Company();
+	 $company->name = $posty['name'];
+	 $company->description = $posty['description'];
+	 $company->save();
 });
 
 $app->get('/message/:cid/:uid', function($cid,$uid) use($app) {
