@@ -180,66 +180,60 @@ $app->post('/perm', function() use($app) {
 });
 
 $app->post('/device-token', function() use($app) {
-  $app->response->setStatus(200);
-  $posty = $app->request->post();
-  $user = \User::find($posty['user_id']);
-  $user->device_token = $posty['device_token'];
-  $user->save();
+    $app->response->setStatus(200);
+    $posty = $app->request->post();
+    $user = \User::find($posty['user_id']);
+    $user->device_token = $posty['device_token'];
+    $user->save();
 });
 
 $app->post('/invite', function() use($app) {
     $app->response->setStatus(200);
-   $posty = $app->request->post();
-    //XXX perms checks 
+    $posty = $app->request->post();
+     //XXX perms checks 
 
-    //is new user ?
-   $user = \User::where('email','=',$posty['email'])->get();
-   if(sizeof($user) > 0){
+     //is new user ?
+    $user = \User::where('email','=',$posty['email'])->get();
+    if(sizeof($user) > 0){
       //see if that user is already a member of the company
-    $perms = \Perm::where(['user_id' => $user[0]->id, 'company_id' => $posty['company_id']])->get();
-    if(sizeof($perms) > 0){
-      //already exists, update.
-      $perm = $perms[0];
+      $perms = \Perm::where(['user_id' => $user[0]->id, 'company_id' => $posty['company_id']])->get();
+      if(sizeof($perms) > 0){
+        //already exists, update.
+        $perm = $perms[0];
+        $perm->role=$posty['role'];
+        $perm->save();
+      }else{
+        //create a new perm.
+        $perm = new \Perm;
+        $perm->user_id=$user[0]->id;
+        $perm->company_id=$posty['company_id'];
+        $perm->role=$posty['role'];
+        $perm->save();
+      }
+    }else{
+      //create a new user.
+      $newpass = random_password(); 
+      $user = new \User();
+      $user->first_name ='John';
+      $user->last_name='Doe';
+      $user->email = $posty['email'];
+      $user->encrypted_password=md5($newpass);
+      $user->save();
+
+      $perm = new \Perm;
+      $perm->user_id=$user->id;
+      $perm->company_id=$posty['company_id'];
       $perm->role=$posty['role'];
       $perm->save();
 
       try {
         $mailer = new \Mailer;
-        $mailer->send_welcome_email($posty['email'],null,'secretsauce');
+        $mailer->send_welcome_email($posty['email'],null,$newpass);
       } catch (Mandrill_Error $e) {
-	$app->log->error('A mandrill error occurred: ' . get_class($e) . ' - ' . $e->getMessage());
+        $app->log->error('A mandrill error occurred: ' . get_class($e) . ' - ' . $e->getMessage());
       }
-    }else{
-        //create a new perm.
-      $perm = new \Perm;
-      $perm->user_id=$user[0]->id;
-      $perm->company_id=$posty['company_id'];
-      $perm->role=$posty['role'];
-      $perm->save();
+
     }
-   }else{
-//create a new user.
-      $user = new \User();
-    $user->first_name ='John';
-    $user->last_name='Doe';
-    $user->email = $posty['email'];
-    $user->encrypted_password='ede97144247e25cb1f63c8a6a5f0b57d';
-    $user->save();
-
-    $perm = new \Perm;
-    $perm->user_id=$user->id;
-    $perm->company_id=$posty['company_id'];
-    $perm->role=$posty['role'];
-    $perm->save();
-
-    try {
-      $mailer = new \Mailer;
-      $mailer->send_welcome_email($posty['email'],null,'secretsauce');
-    } catch (Mandrill_Error $e) {
-      $app->log->error('A mandrill error occurred: ' . get_class($e) . ' - ' . $e->getMessage());
-    }
-
-   }
 });
 
 
@@ -736,6 +730,14 @@ function send_bulletin_push($push_content, $bulletin, $app) {
     ]
   ]);
 }
+
+function random_password( $length = 8 ) {
+    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-=+;:,.?";
+    $password = substr( str_shuffle( $chars ), 0, $length );
+    return $password;
+}
+
+
 
 ### 
 ### function sendInvite() {}
