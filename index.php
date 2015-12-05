@@ -248,6 +248,9 @@ $app->post('/user', function() use($app) {
    $user->email = $posty['email'];
    $user->company_name = $posty['company_name'];
    $user->position = $posty['position'];
+   if(isset($posty['update_pass']) && $posty['update_pass'] != '0'){
+     $user->encrypted_password = md5($posty['update_pass']);
+	}
    $user->save();
 });
 
