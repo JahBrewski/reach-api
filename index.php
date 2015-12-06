@@ -71,6 +71,10 @@ class Bulletin extends \Illuminate\Database\Eloquent\Model
                   );
 }
 
+#################################################################
+####################### SETUP APPLICATION #######################
+#################################################################
+
 //setup logging
 $monolog = new \Flynsarmy\SlimMonolog\Log\MonologWriter(array(
     'handlers' => array(
@@ -78,9 +82,7 @@ $monolog = new \Flynsarmy\SlimMonolog\Log\MonologWriter(array(
     ),
 ));
 
-/**
- * Configure the database and boot Eloquent
- */
+// Configure the database and boot Eloquent
 $capsule = new Capsule;
 $capsule->addConnection(array(
     'driver'    => 'mysql',
@@ -92,7 +94,6 @@ $capsule->addConnection(array(
     'collation' => 'utf8_general_ci',
     'prefix'    => ''
 ));
-
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
@@ -110,7 +111,6 @@ $app->add(new \Slim\Middleware\JwtAuthentication([
     "callback" => function ($options) use ($app) {
             $app->jwt = $options["decoded"];
                  },
-#'logger' => $monolog,
     "rules" => [
       new \Slim\Middleware\JwtAuthentication\RequestPathRule([
         "path" => "/",
@@ -150,25 +150,28 @@ $app->post('/pusher/auth', function() use($app) {
     echo $pusher->socket_auth($_POST['channel_name'], $_POST['socket_id']);
 });
 
-$app->get('/user', function() use($app) {
-    $app->response->setStatus(200);
-    $users = \User::all();
-    echo $users->toJson();
-});
+## $app->get('/user', function() use($app) {
+##     $app->response->setStatus(200);
+##     $users = \User::all();
+##     echo $users->toJson();
+## });
 
 $app->get('/user/:uid', function($uid) use($app) {
+	 //@todo perms
     $user = \User::find($uid);
     $app->response->setStatus(200);
     echo $user->toJson();
 });
 
 $app->get('/perm/:uid/:cid', function($uid,$cid) use($app) {
+	 //@todo perms
     $perm = \Perm::where(['company_id' => $cid, 'user_id' => $uid])->get();
     $app->response->setStatus(200);
     echo $perm->toJson();
 });
 
 $app->post('/perm', function() use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
     $posty = $app->request->post();
     //XXX check to see if the userID matches the JWT.
@@ -180,6 +183,7 @@ $app->post('/perm', function() use($app) {
 });
 
 $app->post('/device-token', function() use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
     $posty = $app->request->post();
     $user = \User::find($posty['user_id']);
@@ -188,6 +192,7 @@ $app->post('/device-token', function() use($app) {
 });
 
 $app->post('/invite', function() use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
     $posty = $app->request->post();
      //XXX perms checks 
@@ -236,12 +241,11 @@ $app->post('/invite', function() use($app) {
     }
 });
 
-
-
 $app->post('/user', function() use($app) {
+	 //@todo perms
+   //XXX check to see if the userID matches the JWT.
     $app->response->setStatus(200);
    $posty = $app->request->post();
-   //XXX check to see if the userID matches the JWT.
     $user = \User::find($posty['id']);
    $user->first_name = $posty['first_name'];
    $user->last_name = $posty['last_name'];
@@ -255,6 +259,7 @@ $app->post('/user', function() use($app) {
 });
 
 $app->get('/company', function() use($app) {
+	 //@todo perms -- DONE ?
     $app->response->setStatus(200);
 
     //figure out what companies they can know about.
@@ -277,6 +282,7 @@ $app->get('/company', function() use($app) {
 });
 
 $app->post('/company', function() use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
    $posty = $app->request->post();
    //XXX check to see if the userID matches the JWT.
@@ -288,12 +294,14 @@ $app->post('/company', function() use($app) {
 });
 
 $app->get('/company/:cid', function($cid) use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
 	 $company = \Company::find($cid);
 	 echo $company->toJson();
 });
 
 $app->post('/company/add', function() use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
 	 //xxx check if super-admin here.
     $posty = $app->request->post();
@@ -304,6 +312,7 @@ $app->post('/company/add', function() use($app) {
 });
 
 $app->get('/message/:cid/:uid', function($cid,$uid) use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
    $req_user = $app->jwt->data->userId;
     $messages = \Message::orderBy('timestamp_queued','ASC')
@@ -314,6 +323,7 @@ $app->get('/message/:cid/:uid', function($cid,$uid) use($app) {
 });
 
 $app->post('/message', function() use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
 
 //should check that 
@@ -349,6 +359,7 @@ $app->post('/message', function() use($app) {
 });
 
 $app->get('/customer/feed', function() use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
    $uid = $app->jwt->data->userId;
    $role_customer = $app->jwt->role_customer;
@@ -399,6 +410,7 @@ $app->get('/customer/feed', function() use($app) {
 });
 
 $app->get('/company/feed/:cid', function($cid) use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
    $uid = $app->jwt->data->userId;
     $all_messages = \Message::orderBy('timestamp_queued','DESC')
@@ -421,12 +433,14 @@ $app->get('/company/feed/:cid', function($cid) use($app) {
 
 
 $app->get('/bulletin/:cid', function($cid) use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
     $bulletins = \Bulletin::orderBy('timestamp_queued','DESC')->where('company_id','=',$cid)->get();
    echo $bulletins->toJson();
 });
 
 $app->post('/bulletin', function() use($app) {
+	 //@todo perms
    $app->response->setStatus(200);
    $posty = $app->request->post();
    $bulletin = new \Bulletin();
@@ -453,12 +467,14 @@ $app->post('/bulletin', function() use($app) {
 
 
 $app->get('/employee/:cid', function($cid) use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
     $employees = \User::whereRaw("id in (select distinct user_id from perms where (role='admin' OR role='employee') and company_id='".$cid."')")->get();
    echo $employees->toJson();
 });
 
 $app->get('/customer/:cid', function($cid) use($app) {
+	 //@todo perms
     $app->response->setStatus(200);
     $customers = \User::whereRaw("id in (select distinct user_id from perms where role='customer' and company_id='".$cid."')")->get();
    echo $customers->toJson();
@@ -466,10 +482,10 @@ $app->get('/customer/:cid', function($cid) use($app) {
 
 
 #END CRUD
-//XXX..
-$app->get('/create-db-schema', function () {
-  create_reach_schema();
-});
+//XXX..  reintroduce this when we get a DEV_MODE
+## $app->get('/create-db-schema', function () {
+##   create_reach_schema();
+## });
 
 $app->run();
 
