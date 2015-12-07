@@ -150,50 +150,75 @@ $app->post('/pusher/auth', function() use($app) {
     echo $pusher->socket_auth($_POST['channel_name'], $_POST['socket_id']);
 });
 
-## $app->get('/user', function() use($app) {
-##     $app->response->setStatus(200);
-##     $users = \User::all();
-##     echo $users->toJson();
-## });
-
 $app->get('/user/:uid', function($uid) use($app) {
-	 //@todo perms
-    $user = \User::find($uid);
+	 //Users can view anyone that is involved in a company they are in and also super admins.
+	 //Super-Admins can view anyone.
+	 $all_roles = get_company_membership();
+
+    if(is_super_admin()){
+      $user = \User::find($uid);
+    }else{
+      $user = \User::whereRaw("id=? AND (id IN (SELECT DISTINCT p.user_id from perms p WHERE p.company_id IN ('".implode("','",$all_roles)."')) OR super_admin='1' )",[$uid])->get(); 
+		if(sizeof($user) > 0){
+		  $user = $user[0];
+		}else{
+        $app->response->setStatus(401);
+		  return;
+		}
+	 }
     $app->response->setStatus(200);
     echo $user->toJson();
 });
 
 $app->get('/perm/:uid/:cid', function($uid,$cid) use($app) {
-	 //@todo perms
-    $perm = \Perm::where(['company_id' => $cid, 'user_id' => $uid])->get();
-    $app->response->setStatus(200);
-    echo $perm->toJson();
+	 //user making edit has to be an admin in company or super admin.
+	 $is_admin = (in_array($cid, $app->jwt->role_admin)); 
+	 $is_super = is_super_admin(); 
+	 if($is_admin || $is_super){
+      $perm = \Perm::where(['company_id' => $cid, 'user_id' => $uid])->get();
+      $app->response->setStatus(200);
+      echo $perm->toJson();
+	 }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 $app->post('/perm', function() use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
+	 //super admins can do whatever.
+	 //admins can make admins, employees, customers
+	 //employees can make customers.
     $posty = $app->request->post();
-    //XXX check to see if the userID matches the JWT.
-    $perm = \Perm::find($posty['id']);
-    $perm->user_id = $posty['user_id'];
-    $perm->company_id = $posty['company_id'];
-    $perm->role = $posty['role'];
-    $perm->save();
+	 $is_admin = (in_array($posty['company_id'], $app->jwt->role_admin)); 
+	 $is_employee = (in_array($posty['company_id'], $app->jwt->role_admin)); 
+	 $is_super = is_super_admin(); 
+
+    if($is_admin || $is_super || ($is_employee && $posty['role'] == 'customer')){
+      $perm = \Perm::find($posty['id']);
+      $perm->user_id = $posty['user_id'];
+      $perm->company_id = $posty['company_id'];
+      $perm->role = $posty['role'];
+      $perm->save();
+      $app->response->setStatus(200);
+	 }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 $app->post('/device-token', function() use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
+	 //you can only set your own device token
     $posty = $app->request->post();
-    $user = \User::find($posty['user_id']);
-    $user->device_token = $posty['device_token'];
-    $user->save();
+	 if($app->jwt->data->userId == $posty['user_id']){
+      $user = \User::find($posty['user_id']);
+      $user->device_token = $posty['device_token'];
+      $user->save();
+      $app->response->setStatus(200);
+	 }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 $app->post('/invite', function() use($app) {
 	 //@todo perms
-    $app->response->setStatus(200);
     $posty = $app->request->post();
      //XXX perms checks 
 
@@ -214,6 +239,7 @@ $app->post('/invite', function() use($app) {
         $perm->company_id=$posty['company_id'];
         $perm->role=$posty['role'];
         $perm->save();
+        $app->response->setStatus(200);
       }
     }else{
       //create a new user.
@@ -230,6 +256,7 @@ $app->post('/invite', function() use($app) {
       $perm->company_id=$posty['company_id'];
       $perm->role=$posty['role'];
       $perm->save();
+      $app->response->setStatus(200);
 
       try {
         $mailer = new \Mailer;
@@ -242,131 +269,160 @@ $app->post('/invite', function() use($app) {
 });
 
 $app->post('/user', function() use($app) {
-	 //@todo perms
-   //XXX check to see if the userID matches the JWT.
-    $app->response->setStatus(200);
-   $posty = $app->request->post();
-    $user = \User::find($posty['id']);
-   $user->first_name = $posty['first_name'];
-   $user->last_name = $posty['last_name'];
-   $user->email = $posty['email'];
-   $user->company_name = $posty['company_name'];
-   $user->position = $posty['position'];
-   if(isset($posty['update_pass']) && $posty['update_pass'] != '0'){
-     $user->encrypted_password = md5($posty['update_pass']);
-	}
-   $user->save();
+    $posty = $app->request->post();
+    //users can only update themselves
+    if($app->jwt->data->userId == $posty['id']){
+      $user = \User::find($posty['id']);
+      $user->first_name = $posty['first_name'];
+      $user->last_name = $posty['last_name'];
+      $user->email = $posty['email'];
+      $user->company_name = $posty['company_name'];
+      $user->position = $posty['position'];
+      if(isset($posty['update_pass']) && $posty['update_pass'] != '0'){
+        $user->encrypted_password = md5($posty['update_pass']);
+      }
+      $user->save();
+      $app->response->setStatus(200);
+	 }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 $app->get('/company', function() use($app) {
-	 //@todo perms -- DONE ?
-    $app->response->setStatus(200);
 
-    //figure out what companies they can know about.
-	 $role_admin = $app->jwt->role_admin;
-	 $role_employee = $app->jwt->role_employee;
-	 $role_customer = $app->jwt->role_customer;
+    //Users are allowed to see companies they belong to.
+	 //Super-Admins see everything.
+	 $all_roles = get_company_membership();
 	 $role_super = $app->jwt->role_super;
-	 $all_roles = array_merge($role_admin, $role_employee, $role_customer);
 
     $companies = \Company::all();
     //index by company ID
-   if(sizeof($companies) > 0){
-      foreach($companies as $company){
-		  if($role_super == 1 || in_array($company->id, $all_roles)){
-          $indexed_companies[$company->id] = $company;
-      }
+    if(sizeof($companies) > 0){
+       foreach($companies as $company){
+	 	  if($role_super == 1 || in_array($company->id, $all_roles)){
+           $indexed_companies[$company->id] = $company;
+       }
+     }
     }
-   }
+    $app->response->setStatus(200);
     echo json_encode($indexed_companies);
 });
 
 $app->post('/company', function() use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-   $posty = $app->request->post();
-   //XXX check to see if the userID matches the JWT.
-    $company = \Company::find($posty['id']);
-   $company->name = $posty['name'];
-   $company->description = $posty['description'];
-   //$user->long_desc = $posty['email'];
-   $company->save();
+	 //must be admin or superadmin
+    $posty = $app->request->post();
+    $is_admin = (in_array($posty['id'], $app->jwt->role_admin)); 
+    $is_super = is_super_admin(); 
+	 if($is_super || $is_admin){
+      //XXX check to see if the userID matches the JWT.
+      $company = \Company::find($posty['id']);
+      $company->name = $posty['name'];
+      $company->description = $posty['description'];
+      //$user->long_desc = $posty['email'];
+      $company->save();
+      $app->response->setStatus(200);
+    }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 $app->get('/company/:cid', function($cid) use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-	 $company = \Company::find($cid);
-	 echo $company->toJson();
+	 //you can see companies you are a member of
+	 //SuperAdmins see everything
+    $is_super = is_super_admin(); 
+	 $all_roles = get_company_membership();
+    $is_member = (in_array($cid, $all_roles));
+
+    if($is_super || $is_member){
+	   $company = \Company::find($cid);
+      $app->response->setStatus(200);
+	   echo $company->toJson();
+	 }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 $app->post('/company/add', function() use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-	 //xxx check if super-admin here.
-    $posty = $app->request->post();
-	 $company = new \Company();
-	 $company->name = $posty['name'];
-	 $company->description = $posty['description'];
-	 $company->save();
+	 //only superadmin can do this.
+    $is_super = is_super_admin(); 
+	 if($is_super){
+      $posty = $app->request->post();
+      $company = new \Company();
+      $company->name = $posty['name'];
+      $company->description = $posty['description'];
+      $company->save();
+      $app->response->setStatus(200);
+	 }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 $app->get('/message/:cid/:uid', function($cid,$uid) use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-   $req_user = $app->jwt->data->userId;
+	 //you can get messages you send or recieve 
+    $req_user = $app->jwt->data->userId;
     $messages = \Message::orderBy('timestamp_queued','ASC')
-   ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND (from_user_id=? OR recipient_user_id=?) AND company_id=?', 
-     [$uid,$uid,$req_user,$req_user,$cid])
-   ->get();
-   echo $messages->toJson();
+    ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND (from_user_id=? OR recipient_user_id=?) AND company_id=?', 
+      [$uid,$uid,$req_user,$req_user,$cid])
+    ->get();
+    $app->response->setStatus(200);
+    echo $messages->toJson();
 });
 
 $app->post('/message', function() use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
+    //super admin can do whatever
+	 //everyone else must be a member
+	 //members can send, so long as not customer to customer.
+    $posty = $app->request->post();
+    $is_super = is_super_admin(); 
+	 $all_roles = get_company_membership();
+    $is_member = (in_array($posty['company_id'], $all_roles));
+    $role_customer = $app->jwt->role_customer;
+    $is_customer = (in_array($posty['company_id'],$role_customer));
+    $cust_recip = \User::whereRaw("id=? AND super_admin='0' AND id IN (SELECT DISTINCT p.user_id from perms p WHERE p.company_id=? and p.role='customer')",[$posty['recipient_uid'],$posty['company_id']])->get(); 
+	 $recip_is_customer = (sizeof($cust_recip) > 0); 
 
-//should check that 
-//A: user is member of this company.
-//B: if is customer, other member is not.
+    if($is_super || ($is_member && !($is_customer && $recip_is_customer))){
+      $message = new \Message();
+      $message->company_id = $posty['company_id']; 
+      $message->from_user_id = $posty['sender_uid'];
+      $message->recipient_user_id = $posty['recipient_uid'];
+      $message->message_content = $posty['message_content'];
+      $message->timestamp_queued = time();
+      $message->timestamp_dequeued = time();
+      $message->save();
 
-   $posty = $app->request->post();
-   $message = new \Message();
-   $message->company_id = $posty['company_id']; 
-   $message->from_user_id = $posty['sender_uid'];
-   $message->recipient_user_id = $posty['recipient_uid'];
-   $message->message_content = $posty['message_content'];
-   $message->timestamp_queued = time();
-   $message->timestamp_dequeued = time();
-   $message->save();
+      $app->response->setStatus(200);
 
-    //XXX XXX XXX
-    $app_id = '140562';
-    $app_key = '95129dfbfbc16ec4a811';
-    $app_secret = '1a5dac7bf5d8f1fd9c33';
-    $pusher = new Pusher( $app_key, $app_secret, $app_id );
-    $pusher->trigger( 'my_channel'.$posty['recipient_uid'], 'my_event', $posty['message_content']);
+      //XXX XXX XXX -- THIS CODE NEEDS TO BE ON THE OTHERSIDE OF DE-QUEUE.
+	   //i.e. this code must execute regardless; we've told the we sent the message at this point
+      $app_id = '140562';
+      $app_key = '95129dfbfbc16ec4a811';
+      $app_secret = '1a5dac7bf5d8f1fd9c33';
+      $pusher = new Pusher( $app_key, $app_secret, $app_id );
+      $pusher->trigger( 'my_channel'.$posty['recipient_uid'], 'my_event', $posty['message_content']);
 
-    $sender = \User::find($posty['sender_uid']);
-    $recipient = \User::find($posty['recipient_uid']);
-    $device_token = $recipient->device_token;
-    $push_content = $sender->first_name . ": " . $message->message_content;
-    $company_id = $message->company_id;
-    $sender_id  = $message->from_user_id;
-
-    // Send a push notification to the recipient
-    send_message_push($device_token,$push_content,$company_id,$sender_id);
+      $sender = \User::find($posty['sender_uid']);
+      $recipient = \User::find($posty['recipient_uid']);
+      $device_token = $recipient->device_token;
+      $push_content = $sender->first_name . ": " . $message->message_content;
+      $company_id = $message->company_id;
+      $sender_id  = $message->from_user_id;
+      // Send a push notification to the recipient
+      send_message_push($device_token,$push_content,$company_id,$sender_id);
+    }else{
+      $app->response->setStatus(401);
+    }
 });
 
 $app->get('/customer/feed', function() use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-   $uid = $app->jwt->data->userId;
-   $role_customer = $app->jwt->role_customer;
+	 //you can have your own feed... no danger here because we pull from the JWT
+    $posty = $app->request->post();
+    $uid = $app->jwt->data->userId;
+    $role_customer = $app->jwt->role_customer;
     $all_messages = \Message::orderBy('timestamp_queued','DESC')
-   ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND company_id IN ("'.implode('","',$role_customer).'")', 
-     [$uid,$uid])
-    ->get();
+      ->whereRaw('(from_user_id=? OR recipient_user_id=?) AND company_id IN ("'.implode('","',$role_customer).'")', 
+      [$uid,$uid])
+      ->get();
 
     $all_bulletins = \Bulletin::orderBy('timestamp_queued','DESC')
 	 ->whereRaw('company_id IN ("'.implode('","',$role_customer).'")')
@@ -376,7 +432,7 @@ $app->get('/customer/feed', function() use($app) {
 	 if(sizeof($all_bulletins) > 0){
 	   foreach($all_bulletins as $bullet){
         $bulletin_feed[] = $bullet;
-		}
+	   }
     }
 	 $feed = array();
 	 $contacts = array();
@@ -400,56 +456,74 @@ $app->get('/customer/feed', function() use($app) {
       foreach($feed as $k => $f){
         if(isset($f->recipient_user_id)){
           $feed[$k]->type = 'message';
-		  }else{
+	     }else{
           $feed[$k]->type = 'bulletin';
-		  }
+	     }
       }
 	 }
-
+    $app->response->setStatus(200);
     echo json_encode($feed);
 });
 
 $app->get('/company/feed/:cid', function($cid) use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-   $uid = $app->jwt->data->userId;
-    $all_messages = \Message::orderBy('timestamp_queued','DESC')
-   ->whereRaw('(from_user_id=? OR recipient_user_id=?) and company_id=?', 
-     [$uid,$uid,$cid])
-    ->get();
-   $feed = array();
-   $contacts = array();
-    foreach($all_messages as $message){
-      $contact = ($message->recipient_user_id !== $uid) ? 
-      $message->recipient_user_id : $message->from_user_id;
-    if(isset($contacts[$contact])){
-        continue;
-    }
-      $contacts[$contact] = TRUE;
-    $feed[] = $message;
-    }
-    echo json_encode($feed);
+	 //super admins and members can view the company feed.
+    $is_super = is_super_admin(); 
+	 $all_roles = get_company_membership();
+    $is_member = (in_array($cid, $all_roles));
+	 if($is_super || $is_member){
+      $uid = $app->jwt->data->userId;
+      $all_messages = \Message::orderBy('timestamp_queued','DESC')
+        ->whereRaw('(from_user_id=? OR recipient_user_id=?) and company_id=?', 
+        [$uid,$uid,$cid])
+        ->get();
+      $feed = array();
+      $contacts = array();
+      foreach($all_messages as $message){
+        $contact = ($message->recipient_user_id !== $uid) ? 
+        $message->recipient_user_id : $message->from_user_id;
+        if(isset($contacts[$contact])){
+            continue;
+        }
+        $contacts[$contact] = TRUE;
+      $feed[] = $message;
+      }
+      $app->response->setStatus(200);
+      echo json_encode($feed);
+	 }else{
+	   $app->response->setStatus(401);
+	 }
 });
 
 
 $app->get('/bulletin/:cid', function($cid) use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-    $bulletins = \Bulletin::orderBy('timestamp_queued','DESC')->where('company_id','=',$cid)->get();
-   echo $bulletins->toJson();
+	 //super admins can get everything
+	 //members can get everything.
+    $is_super = is_super_admin(); 
+	 $all_roles = get_company_membership();
+    $is_member = (in_array($cid, $all_roles));
+	 if($is_super || $is_member){
+      $bulletins = \Bulletin::orderBy('timestamp_queued','DESC')->where('company_id','=',$cid)->get();
+      $app->response->setStatus(200);
+      echo $bulletins->toJson();
+	 }else{
+	   $app->response->setStatus(401);
+	 }
 });
 
 $app->post('/bulletin', function() use($app) {
-	 //@todo perms
-   $app->response->setStatus(200);
-   $posty = $app->request->post();
-   $bulletin = new \Bulletin();
-   $bulletin->company_id = $posty['company_id']; 
-   $bulletin->from_user_id = $posty['sender_uid'];
-   $bulletin->message_content = $posty['message_content'];
-   $bulletin->timestamp_queued = time();
-   $bulletin->timestamp_dequeued = time();
-   $bulletin->save();
+	 //admins and super admins can post bulletins
+    $posty = $app->request->post();
+	 $is_admin = (in_array($posty['company_id'], $app->jwt->role_admin)); 
+	 $is_super = is_super_admin(); 
+    if($is_super || $is_admin){
+      $bulletin = new \Bulletin();
+      $bulletin->company_id = $posty['company_id']; 
+      $bulletin->from_user_id = $posty['sender_uid'];
+      $bulletin->message_content = $posty['message_content'];
+      $bulletin->timestamp_queued = time();
+      $bulletin->timestamp_dequeued = time();
+      $bulletin->save();
+      $app->response->setStatus(200);
 
     //XXX XXX XXX
 ##    $app_id = '140562';
@@ -458,26 +532,44 @@ $app->post('/bulletin', function() use($app) {
 ##    $pusher = new Pusher( $app_key, $app_secret, $app_id );
 ##    $pusher->trigger( 'my_channel'.$posty['recipient_uid'], 'my_event', $posty['message_content']);
   
-   // Send push notification to every member of the company
-   $company = \Company::find($bulletin->company_id);
-   $push_content = $company->name . ": " . $bulletin->message_content;
-
-   send_bulletin_push($push_content, $bulletin, $app);
+      // Send push notification to every member of the company
+      $company = \Company::find($bulletin->company_id);
+      $push_content = $company->name . ": " . $bulletin->message_content;
+      send_bulletin_push($push_content, $bulletin, $app);
+    }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 
 $app->get('/employee/:cid', function($cid) use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-    $employees = \User::whereRaw("id in (select distinct user_id from perms where (role='admin' OR role='employee') and company_id='".$cid."')")->get();
-   echo $employees->toJson();
+	 //super admins can get anything.  members can get anything.
+    $is_super = is_super_admin(); 
+	 $all_roles = get_company_membership();
+    $is_member = (in_array($cid, $all_roles));
+	 if($is_super || $is_member){
+      $employees = \User::whereRaw("id in (select distinct user_id from perms where (role='admin' OR role='employee') and company_id='".$cid."')")->get();
+      $app->response->setStatus(200);
+      echo $employees->toJson();
+    }else{
+	   $app->response->setStatus(401);
+	 }
 });
 
 $app->get('/customer/:cid', function($cid) use($app) {
-	 //@todo perms
-    $app->response->setStatus(200);
-    $customers = \User::whereRaw("id in (select distinct user_id from perms where role='customer' and company_id='".$cid."')")->get();
-   echo $customers->toJson();
+	 //members who are not customers can see customers
+    $is_super = is_super_admin(); 
+	 $all_roles = get_company_membership();
+    $is_member = (in_array($cid, $all_roles));
+	 $is_customer = (in_array($cid, $app->jwt->role_customer));
+
+	 if($is_super || ($is_member && !$is_customer)){
+      $customers = \User::whereRaw("id in (select distinct user_id from perms where role='customer' and company_id='".$cid."')")->get();
+      $app->response->setStatus(200);
+      echo $customers->toJson();
+	 }else{
+      $app->response->setStatus(401);
+	 }
 });
 
 
@@ -529,11 +621,12 @@ function doLogin() {
                     $expire     = $notBefore + 3600000; // Adding 60 seconds
                     $serverName = $config['serverName'];
 
-              $roles = \Perm::where('user_id', '=', $user->id)->get();
 
               $admins = array();
               $employees = array();
               $customers = array();
+
+$roles = \Perm::where('user_id', '=', $user->id)->get();
 
               $role_admin = \Perm::where(['user_id' => $user->id, 'role' => 'admin'])->get();
               $role_emp = \Perm::where(['user_id' => $user->id, 'role' => 'employee'])->get();
@@ -626,7 +719,6 @@ function doLogin() {
     }
 }
 
-####################### DATABASE HELPERS ###################
 function create_reach_schema() {
 
   Capsule::schema()->dropIfExists('users');
@@ -756,13 +848,24 @@ function random_password( $length = 8 ) {
     return $password;
 }
 
+function get_company_membership(){
 
+    global $app;
+	 $role_admin = $app->jwt->role_admin;
+	 $role_employee = $app->jwt->role_employee;
+	 $role_customer = $app->jwt->role_customer;
+	 $all_roles = array_merge($role_admin, $role_employee, $role_customer);
+    return $all_roles;
 
-### 
-### function sendInvite() {}
-### function processInviteAck() {}
-### 
-### function sendRequest() {}
-### function processRequestAck() {}
-### 
-### 
+}
+
+function is_super_admin(){
+
+    global $app;
+	 $role_super = $app->jwt->role_super;
+	 if($role_super == 1){
+      return TRUE;
+	 }
+	 return FALSE;
+}
+
