@@ -75,6 +75,9 @@ class Bulletin extends \Illuminate\Database\Eloquent\Model
 ####################### SETUP APPLICATION #######################
 #################################################################
 
+$dotenv = new Dotenv\Dotenv(__DIR__);
+$dotenv->load();
+
 //setup logging
 $monolog = new \Flynsarmy\SlimMonolog\Log\MonologWriter(array(
     'handlers' => array(
@@ -86,10 +89,10 @@ $monolog = new \Flynsarmy\SlimMonolog\Log\MonologWriter(array(
 $capsule = new Capsule;
 $capsule->addConnection(array(
     'driver'    => 'mysql',
-    'host'      => 'localhost',
-    'database'  => 'reach_app2',
-    'username'  => 'reachdb',
-    'password'  => 'reachdb123',
+    'host'      => getenv('DB_HOST'),
+    'database'  => getenv('DB_NAME'),
+    'username'  => getenv('DB_USER'),
+    'password'  => getenv('DB_PASS'),
     'charset'   => 'utf8',
     'collation' => 'utf8_general_ci',
     'prefix'    => ''
@@ -107,7 +110,7 @@ $app = new \Slim\Slim(array(
 //setup jwt auth
 $app->add(new \Slim\Middleware\JwtAuthentication([
     "secure" => false,
-    "secret" => "supersecretkeyyoushouldnotcommittogithub",
+    "secret" => getenv("JWT_SECRET"),
     "callback" => function ($options) use ($app) {
             $app->jwt = $options["decoded"];
                  },
@@ -143,9 +146,9 @@ $app->post('/login', function() use($app) {
 
 $app->post('/pusher/auth', function() use($app) {
     $app->response->setStatus(200);
-    $app_id = '140562';
-    $app_key = '95129dfbfbc16ec4a811';
-    $app_secret = '1a5dac7bf5d8f1fd9c33';
+    $app_id = getenv('PUSHER_APP_ID');
+    $app_key = getenv('PUSHER_APP_KEY');
+    $app_secret = getenv('PUSHER_APP_SECRET');
     $pusher = new Pusher( $app_key, $app_secret, $app_id );
     echo $pusher->socket_auth($_POST['channel_name'], $_POST['socket_id']);
 });
@@ -395,9 +398,9 @@ $app->post('/message', function() use($app) {
 
       //XXX XXX XXX -- THIS CODE NEEDS TO BE ON THE OTHERSIDE OF DE-QUEUE.
 	   //i.e. this code must execute regardless; we've told the we sent the message at this point
-      $app_id = '140562';
-      $app_key = '95129dfbfbc16ec4a811';
-      $app_secret = '1a5dac7bf5d8f1fd9c33';
+      $app_id = getenv('PUSHER_APP_ID');
+      $app_key = getenv('PUSHER_APP_KEY');
+      $app_secret = getenv('PUSHER_APP_SECRET');
       $pusher = new Pusher( $app_key, $app_secret, $app_id );
       $pusher->trigger( 'my_channel'.$posty['recipient_uid'], 'my_event', $posty['message_content']);
 
@@ -589,7 +592,7 @@ function doLogin() {
 
     $config = array(
         'jwt' => array(
-          'key'       => 'supersecretkeyyoushouldnotcommittogithub',     // Key for signing the JWT's, I suggest generate it with base64_encode(openssl_random_pseudo_bytes(64))
+          'key'       => getenv('JWT_SECRET'),     // Key for signing the JWT's, I suggest generate it with base64_encode(openssl_random_pseudo_bytes(64))
           'algorithm' => 'HS256' // Algorithm used to sign the token, see https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40#section-3
           ),
         'serverName' => 'reachapp.com'
@@ -767,10 +770,10 @@ function send_message_push($device_token, $message, $company_id, $sender_id) {
 
   $client = new GuzzleHttp\Client();
   $res = $client->request('POST', 'https://push.ionic.io/api/v1/push', [
-    'auth' => ['50e2a82e2d36dc853a0a10affdb02c858d6d9890571576d1', ''],
+    'auth' => [getenv('PUSH_AUTH'),''],
     'headers' => [
       'Content-Type' => 'application/json',
-      'X-Ionic-Application-Id' => '385fc9cd'
+      'X-Ionic-Application-Id' => getenv('IONIC_APP_ID') 
     ],
     'json' => [
       'tokens' => [ $device_token ],
@@ -814,10 +817,10 @@ function send_bulletin_push($push_content, $bulletin, $app) {
 
   $client = new GuzzleHttp\Client();
   $res = $client->request('POST', 'https://push.ionic.io/api/v1/push', [
-    'auth' => ['50e2a82e2d36dc853a0a10affdb02c858d6d9890571576d1', ''],
+    'auth' => [getenv('PUSH_AUTH'), ''],
     'headers' => [
       'Content-Type' => 'application/json',
-      'X-Ionic-Application-Id' => '385fc9cd'
+      'X-Ionic-Application-Id' => getenv('IONIC_APP_ID') 
     ],
     'json' => [
       'tokens' => $device_tokens,
