@@ -55,6 +55,7 @@ CREATE TABLE `companies` (
   `name` varchar(255) NOT NULL,
   `description` varchar(255) NOT NULL,
   `img_url` varchar(255) DEFAULT NULL,
+  `logo` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -65,7 +66,7 @@ CREATE TABLE `companies` (
 
 LOCK TABLES `companies` WRITE;
 /*!40000 ALTER TABLE `companies` DISABLE KEYS */;
-INSERT INTO `companies` VALUES (1,'Brewer Digital, Corp.','We make beer into codez','img/brewer_digital.jpg'),(2,'Gym Fed','Work hard, get results.','img/gymfed.jpeg'),(3,'Google, Inc.','Look around for things. and stuff and junk n stuffs','img/google.jpg');
+INSERT INTO `companies` VALUES (1,'Brewer Digital, Corp.','We make beer into codez','img/brewer_digital.jpg',''),(2,'Gym Fed','Work hard, get results.','img/gymfed.jpeg', ''),(3,'Google, Inc.','Look around for things. and stuff and junk n stuffs','img/google.jpg','');
 /*!40000 ALTER TABLE `companies` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -140,6 +141,8 @@ CREATE TABLE `users` (
   `company_name` varchar(255) DEFAULT NULL,
   `position` varchar(255) DEFAULT NULL,
   `super_admin` tinyint(1) DEFAULT NULL,
+  `device_token` varchar(255) DEFAULT NULL,
+  `avatar` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -150,7 +153,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'mrgoby@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Brook','Davis','GobytroNiX','head leader',0),(2,'lappin.hammond@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Lappin','Hammondy','null','null',0),(3,'joelbrewer01@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Joel','Brewersteinner','Brewer Digital','Owner',0),(4,'someone@somewhere.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,0),(5,'bobby@bobby.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,0),(6,'codyfedell@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Cody','Fedell','GymFed','Owner',NULL),(7,'bobbyjones@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL),(8,'bobbyjones2@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL),(9,'bobbyjones3@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL),(10,'bobbyjoedawg@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL),(11,'another@somehwere.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL),(12,'Codyfed@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL),(13,'test.user@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Test','SuperAdmin','Uberscale','Boss',1);
+INSERT INTO `users` VALUES (1,'mrgoby@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Brook','Davis','GobytroNiX','head leader',0,'',''),(2,'lappin.hammond@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Lappin','Hammondy','null','null',0,'',''),(3,'joelbrewer01@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Joel','Brewersteinner','Brewer Digital','Owner',0,'',''),(4,'someone@somewhere.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,0,'',''),(5,'bobby@bobby.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,0,'',''),(6,'codyfedell@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Cody','Fedell','GymFed','Owner',NULL,'',''),(7,'bobbyjones@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL,'',''),(8,'bobbyjones2@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL,'',''),(9,'bobbyjones3@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL,'',''),(10,'bobbyjoedawg@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL,'',''),(11,'another@somehwere.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL,'',''),(12,'Codyfed@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','John','Doe',NULL,NULL,NULL,'',''),(13,'test.user@gmail.com','ede97144247e25cb1f63c8a6a5f0b57d','Test','SuperAdmin','Uberscale','Boss',1,'','');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
