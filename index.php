@@ -152,54 +152,34 @@ $app->post('/pusher/auth', function() use($app) {
     echo $pusher->socket_auth($_POST['channel_name'], $_POST['socket_id']);
 });
 
-$app->post('/upload_avatar', function() use($app) {
+$app->post('/upload_image', function() use($app) {
   $app->response->setStatus(200);
   $posty = $app->request->post();
+  $image_type = $posty["image_type"];
 
-  $app->log->debug("\n\nFiles:");
-  $app->log->debug($_FILES);
+  switch ($image_type) {
+    case "user_avatar":
+      $dirpath = dirname(getcwd()) . "/html/images/avatars/" . $posty["user_id"];
+      $name = "avatar.jpg";
+      $model = \User::find($posty["user_id"]);
+      $model->avatar = "/images/avatars/" . $posty["user_id"] . "/" . $name;
+      break;
+    case "company_logo":
+      $dirpath = dirname(getcwd()) . "/html/images/logos/" . $posty["company_id"];
+      $name = "logo.jpg";
+      $model = \Company::find($posty["company_id"]);
+      $model->logo = "/images/logos/" . $posty["company_id"] . "/" . $name;
+      break;
+  }
 
-  $dirpath = dirname(getcwd()) . "/html/images/avatars/" . $posty["user_id"];
+  $model->save();
 
   if ( ! is_dir($dirpath)) {
     mkdir($dirpath);
   }
 
-  $app->log->debug("\n\nDirpath");
-  $app->log->debug($dirpath);
-
-  move_uploaded_file($_FILES["file"]["tmp_name"], $dirpath . "/profile.jpg");
-
-  $user = \User::find($posty["user_id"]);
-  $user->avatar = "/images/avatars/" . $posty["user_id"] . "/profile.jpg";
-  $user->save();
-
-  $app->log->debug("\n\nUploaded avatar");
-});
-
-$app->post('/upload_logo', function() use($app) {
-  $app->response->setStatus(200);
-  $posty = $app->request->post();
-
-  $app->log->debug("\n\nFiles:");
-  $app->log->debug($_FILES);
-
-  $dirpath = dirname(getcwd()) . "/html/images/logos/" . $posty["company_id"];
-
-  if ( ! is_dir($dirpath)) {
-    mkdir($dirpath);
-  }
-
-  $app->log->debug("\n\nDirpath");
-  $app->log->debug($dirpath);
-
-  move_uploaded_file($_FILES["file"]["tmp_name"], $dirpath . "/logo.jpg");
-
-  $company = \Company::find($posty["company_id"]);
-  $company->logo = "/images/logos/" . $posty["company_id"] . "/logo.jpg";
-  $company->save();
-
-  $app->log->debug("\n\nUploaded logo");
+  move_uploaded_file($_FILES["file"]["tmp_name"], $dirpath . "/" . $name);
+  $app->log->debug("\n\nUploaded" . $name);
 });
 
 $app->get('/user', function() use($app) {
