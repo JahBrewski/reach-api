@@ -19,7 +19,8 @@ class User extends \Illuminate\Database\Eloquent\Model
                           'last_name',
                           'company_name', 
                           'position',
-                          'device_token'
+                          'device_token',
+                          'avatar'
                         );
 }
 
@@ -29,7 +30,8 @@ class Company extends \Illuminate\Database\Eloquent\Model
   public $timestamps = false;
   protected $fillable = array(
                           'name',
-                          'description'
+                          'description',
+                          'logo'
                         );
 }
 
@@ -148,6 +150,62 @@ $app->post('/pusher/auth', function() use($app) {
     $app_secret = '1a5dac7bf5d8f1fd9c33';
     $pusher = new Pusher( $app_key, $app_secret, $app_id );
     echo $pusher->socket_auth($_POST['channel_name'], $_POST['socket_id']);
+});
+
+$app->post('/upload_avatar', function() use($app) {
+  $app->response->setStatus(200);
+  $posty = $app->request->post();
+
+  $app->log->debug("\n\nFiles:");
+  $app->log->debug($_FILES);
+
+  $dirpath = dirname(getcwd()) . "/html/images/avatars/" . $posty["user_id"];
+
+  if ( ! is_dir($dirpath)) {
+    mkdir($dirpath);
+  }
+
+  $app->log->debug("\n\nDirpath");
+  $app->log->debug($dirpath);
+
+  move_uploaded_file($_FILES["file"]["tmp_name"], $dirpath . "/profile.jpg");
+
+  $user = \User::find($posty["user_id"]);
+  $user->avatar = "/images/avatars/" . $posty["user_id"] . "/profile.jpg";
+  $user->save();
+
+  $app->log->debug("\n\nUploaded avatar");
+});
+
+$app->post('/upload_logo', function() use($app) {
+  $app->response->setStatus(200);
+  $posty = $app->request->post();
+
+  $app->log->debug("\n\nFiles:");
+  $app->log->debug($_FILES);
+
+  $dirpath = dirname(getcwd()) . "/html/images/logos/" . $posty["company_id"];
+
+  if ( ! is_dir($dirpath)) {
+    mkdir($dirpath);
+  }
+
+  $app->log->debug("\n\nDirpath");
+  $app->log->debug($dirpath);
+
+  move_uploaded_file($_FILES["file"]["tmp_name"], $dirpath . "/logo.jpg");
+
+  $company = \Company::find($posty["company_id"]);
+  $company->logo = "/images/logos/" . $posty["company_id"] . "/logo.jpg";
+  $company->save();
+
+  $app->log->debug("\n\nUploaded logo");
+});
+
+$app->get('/user', function() use($app) {
+    $app->response->setStatus(200);
+    $users = \User::all();
+    echo $users->toJson();
 });
 
 $app->get('/user/:uid', function($uid) use($app) {
