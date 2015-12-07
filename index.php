@@ -19,7 +19,8 @@ class User extends \Illuminate\Database\Eloquent\Model
                           'last_name',
                           'company_name', 
                           'position',
-                          'device_token'
+                          'device_token',
+                          'avatar'
                         );
 }
 
@@ -29,7 +30,8 @@ class Company extends \Illuminate\Database\Eloquent\Model
   public $timestamps = false;
   protected $fillable = array(
                           'name',
-                          'description'
+                          'description',
+                          'logo'
                         );
 }
 
@@ -151,6 +153,42 @@ $app->post('/pusher/auth', function() use($app) {
     $app_secret = getenv('PUSHER_APP_SECRET');
     $pusher = new Pusher( $app_key, $app_secret, $app_id );
     echo $pusher->socket_auth($_POST['channel_name'], $_POST['socket_id']);
+});
+
+$app->post('/upload_image', function() use($app) {
+  $app->response->setStatus(200);
+  $posty = $app->request->post();
+  $image_type = $posty["image_type"];
+
+  switch ($image_type) {
+    case "user_avatar":
+      $dirpath = dirname(getcwd()) . "/html/images/avatars/" . $posty["user_id"];
+      $name = "avatar.jpg";
+      $model = \User::find($posty["user_id"]);
+      $model->avatar = "/images/avatars/" . $posty["user_id"] . "/" . $name;
+      break;
+    case "company_logo":
+      $dirpath = dirname(getcwd()) . "/html/images/logos/" . $posty["company_id"];
+      $name = "logo.jpg";
+      $model = \Company::find($posty["company_id"]);
+      $model->logo = "/images/logos/" . $posty["company_id"] . "/" . $name;
+      break;
+  }
+
+  $model->save();
+
+  if ( ! is_dir($dirpath)) {
+    mkdir($dirpath);
+  }
+
+  move_uploaded_file($_FILES["file"]["tmp_name"], $dirpath . "/" . $name);
+  $app->log->debug("\n\nUploaded" . $name);
+});
+
+$app->get('/user', function() use($app) {
+    $app->response->setStatus(200);
+    $users = \User::all();
+    echo $users->toJson();
 });
 
 $app->get('/user/:uid', function($uid) use($app) {
