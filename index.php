@@ -286,8 +286,8 @@ $app->post('/invite', function() use($app) {
       //create a new user.
       $newpass = random_password(); 
       $user = new \User();
-      $user->first_name ='John';
-      $user->last_name='Doe';
+		$user->first_name = (isset($posty['first_name'])) ? $posty['first_name'] : 'John';
+		$user->last_name = (isset($posty['last_name'])) ? $posty['last_name'] : 'Doe';
       $user->email = $posty['email'];
       $user->encrypted_password=md5($newpass);
       $user->save();
