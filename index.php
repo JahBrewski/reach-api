@@ -162,13 +162,13 @@ $app->post('/upload_image', function() use($app) {
 
   switch ($image_type) {
     case "user_avatar":
-      $dirpath = dirname(getcwd()) . "/html/images/avatars/" . $posty["user_id"];
+      $dirpath = dirname(getcwd()) . "/reach/images/avatars/" . $posty["user_id"];
       $name = "avatar.jpg";
       $model = \User::find($posty["user_id"]);
       $model->avatar = "/images/avatars/" . $posty["user_id"] . "/" . $name;
       break;
     case "company_logo":
-      $dirpath = dirname(getcwd()) . "/html/images/logos/" . $posty["company_id"];
+      $dirpath = dirname(getcwd()) . "/reach/images/logos/" . $posty["company_id"];
       $name = "logo.jpg";
       $model = \Company::find($posty["company_id"]);
       $model->logo = "/images/logos/" . $posty["company_id"] . "/" . $name;
