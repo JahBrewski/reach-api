@@ -142,7 +142,6 @@ $app->get('/', function() use($app) {
 }); 
 
 $app->post('/login', function() use($app) {
-    $app->response->setStatus(200);
     doLogin();
 });
 
